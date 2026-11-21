@@ -48,6 +48,17 @@ async function main(): Promise<void> {
   if (width > MAX_DIM || height > MAX_DIM) {
     fail(`bundled entry.png is ${width}x${height}, over the 1024x1024 cap`);
   }
+  // IHDR tail: bit depth is byte 24, color type is byte 25. Reject values
+  // the PNG spec does not define, so a corrupt or exotic header fails here
+  // with a clear message instead of producing an unusable output image.
+  const bitDepth = bytes[24];
+  const colorType = bytes[25];
+  if (![1, 2, 4, 8, 16].includes(bitDepth)) {
+    fail(`bundled entry.png has invalid IHDR bit depth ${bitDepth}`);
+  }
+  if (![0, 2, 3, 4, 6].includes(colorType)) {
+    fail(`bundled entry.png has invalid IHDR color type ${colorType}`);
+  }
 
   const sourceHash = sha256Hex(bytes);
   await mkdir(outDir, { recursive: true });
